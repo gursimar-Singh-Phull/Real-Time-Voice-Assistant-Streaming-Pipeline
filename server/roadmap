@@ -1,0 +1,80 @@
+The project is actively under development. Features are being added and improved incrementally.
+
+### Phase 1: Desktop Control
+- [x] Open Windows applications using voice commands
+- [x] Open Notepad
+- [x] Open websites
+- [x] Google web search through voice commands
+- [x] YouTube search through voice commands
+- [ ] Open folders using voice commands
+- [ ] Create, rename, delete, move, and copy files
+- [ ] Search and open local files
+- [ ] PDF file handling and interaction
+
+### Phase 2: System Control
+- [x] Lock the computer
+- [x] Put the computer to sleep
+- [ ] Increase system volume
+- [ ] Decrease system volume
+- [ ] Mute and unmute system audio
+- [ ] Restart the computer
+- [ ] Shut down the computer
+- [ ] Add confirmation for potentially disruptive actions
+
+### Phase 3: Memory
+- [ ] Conversation memory
+- [ ] User preference memory
+- [ ] Context-aware responses
+- [ ] Persistent memory across sessions
+
+### Phase 4: Vision
+- [ ] Screen understanding
+- [ ] Screenshot analysis
+- [ ] Visual UI element detection
+- [ ] Voice-controlled interaction with visual elements
+
+### Phase 5: RAG
+- [ ] Document ingestion
+- [ ] Document embeddings
+- [ ] Vector database integration
+- [ ] Question answering over personal documents
+- [ ] Context-aware document retrieval
+
+### Phase 6: Data Analyst Mode
+- [ ] CSV and Excel file analysis
+- [ ] Data cleaning through voice commands
+- [ ] Statistical analysis
+- [ ] Automatic data visualization
+- [ ] Natural-language data queries
+- [ ] Report generation
+
+### Phase 7: Multi-Step Reasoning
+- [ ] Multi-step task execution
+- [ ] Tool chaining
+- [ ] Task planning
+- [ ] Error recovery
+- [ ] Complex voice workflows
+
+### Phase 8: Performance Engineering
+- [ ] Reduce speech-to-text latency
+- [ ] Reduce LLM response latency
+- [ ] Optimize tool execution
+- [ ] Reduce text-to-speech latency
+- [ ] Improve overall conversational responsiveness
+
+### Phase 9: Observability
+- [ ] Structured logging
+- [ ] Tool execution tracking
+- [ ] Latency monitoring
+- [ ] Error monitoring
+- [ ] Performance metrics
+- [ ] Debugging and evaluation workflows
+
+### Phase 10: Production-Ready Assistant
+- [ ] Refine the overall architecture
+- [ ] Improve reliability and error handling
+- [ ] Improve security
+- [ ] Improve user experience
+- [ ] Add comprehensive documentation
+- [ ] Add automated testing
+- [ ] Prepare a polished release
