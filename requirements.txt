@@ -1,0 +1,7 @@
+pipecat-ai==0.0.108
+google-genai
+deepgram-sdk
+cartesia
+python-dotenv
+requests
+```
