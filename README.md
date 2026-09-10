@@ -99,3 +99,29 @@ The goal is to gradually turn Nova into a more capable real-time voice assistant
 ## Project Status
 
 **Active development — core functionality working, additional features in progress.**
+
+## Project Status
+
+**Status: Active Development**
+
+This project is currently being developed incrementally. Core real-time voice interaction and desktop control features are working, while additional capabilities are actively being implemented.
+
+### Currently Working
+- Real-time voice conversation
+- Speech-to-text processing
+- LLM-powered responses
+- Text-to-speech responses
+- Windows application control
+- System controls such as locking and sleep
+- Voice-triggered browser actions
+
+### In Progress
+- More advanced Google and YouTube voice search
+- File and folder management
+- System volume controls
+- Persistent memory
+- Vision and screen understanding
+
+
+
+
