@@ -6,6 +6,7 @@ from pathlib import Path
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams
+from tools.observability import observe_tool
 
 DB_PATH = Path(os.getenv("NOVA_MEMORY_DB", Path.home() / ".nova_ai" / "memory.sqlite3"))
 
@@ -86,7 +87,7 @@ async def forget_memory(params: FunctionCallParams):
 
 
 memory_tools = ToolsSchema(standard_tools=[
-    FunctionSchema(name="remember_fact", description="Save a user-approved preference or fact to local persistent memory. Ask before saving sensitive information.", properties={"category":{"type":"string","description":"Short category such as preference, project, or routine."},"fact":{"type":"string","description":"Non-sensitive fact or preference to remember."}}, required=["fact"], handler=remember_fact),
-    FunctionSchema(name="recall_memory", description="Recall saved preferences or facts from persistent local memory.", properties={"query":{"type":"string","description":"Optional keyword filter; leave empty to list recent memories."}}, required=[], handler=recall_memory),
-    FunctionSchema(name="forget_memory", description="Delete matching saved memories only after the user confirms the exact phrase FORGET <query>.", properties={"query":{"type":"string","description":"Specific keyword or phrase to remove."},"confirmation":{"type":"string","description":"Must be exactly FORGET followed by the query after explicit user confirmation."}}, required=["query","confirmation"], handler=forget_memory),
+    FunctionSchema(name="remember_fact", description="Save a user-approved preference or fact to local persistent memory. Ask before saving sensitive information.", properties={"category":{"type":"string","description":"Short category such as preference, project, or routine."},"fact":{"type":"string","description":"Non-sensitive fact or preference to remember."}}, required=["fact"], handler=observe_tool(remember_fact)),
+    FunctionSchema(name="recall_memory", description="Recall saved preferences or facts from persistent local memory.", properties={"query":{"type":"string","description":"Optional keyword filter; leave empty to list recent memories."}}, required=[], handler=observe_tool(recall_memory)),
+    FunctionSchema(name="forget_memory", description="Delete matching saved memories only after the user confirms the exact phrase FORGET <query>.", properties={"query":{"type":"string","description":"Specific keyword or phrase to remove."},"confirmation":{"type":"string","description":"Must be exactly FORGET followed by the query after explicit user confirmation."}}, required=["query","confirmation"], handler=observe_tool(forget_memory)),
 ])
