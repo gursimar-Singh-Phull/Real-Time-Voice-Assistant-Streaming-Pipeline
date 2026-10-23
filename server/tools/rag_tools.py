@@ -5,6 +5,7 @@ a neural embedding model; the LLM receives retrieved excerpts as tool output.
 """
 import math
 import json
+import hashlib
 import os
 import re
 import sqlite3
@@ -85,6 +86,18 @@ def _read_text(path):
     return path.read_text(encoding="utf-8", errors="replace")
 
 
+def _chroma_collection():
+    """Return a persistent Chroma collection when the optional backend is selected."""
+    import chromadb
+    path = Path(os.getenv("NOVA_CHROMA_PATH", Path.home() / ".nova_ai" / "chroma"))
+    path.mkdir(parents=True, exist_ok=True)
+    client = chromadb.PersistentClient(path=str(path))
+    return client.get_or_create_collection(
+        name="nova_documents",
+        metadata={"hnsw:space": "cosine"},
+    )
+
+
 def _embed(texts):
     """Return Gemini embeddings when configured; None means lexical fallback."""
     api_key = os.getenv("GEMINI_API_KEY")
@@ -144,6 +157,20 @@ async def ingest_document(params: FunctionCallParams):
                  for i, chunk in enumerate(chunks)],
             )
         mode = "Gemini vector embeddings" if embeddings else "local lexical retrieval"
+        if embeddings and os.getenv("NOVA_RAG_BACKEND", "sqlite").lower() == "chroma":
+            try:
+                collection = _chroma_collection()
+                collection.delete(where={"source": str(path)})
+                ids = [hashlib.sha256(f"{path}:{i}".encode()).hexdigest() for i in range(len(chunks))]
+                collection.add(
+                    ids=ids,
+                    documents=chunks,
+                    embeddings=embeddings,
+                    metadatas=[{"source": str(path), "chunk_index": i} for i in range(len(chunks))],
+                )
+                mode += " + ChromaDB"
+            except Exception as exc:
+                mode += " (ChromaDB unavailable; SQLite fallback: " + str(exc)[:160] + ")"
         await params.result_callback(f"Indexed {len(chunks)} text chunks from {path.name} using {mode}. Ask me a question about it.")
     except Exception as exc:
         await params.result_callback(f"Document ingestion failed: {exc}")
@@ -159,6 +186,11 @@ async def remove_document(params: FunctionCallParams):
     try:
         with _db() as conn:
             cursor = conn.execute("DELETE FROM chunks WHERE source = ?", (path,))
+        if os.getenv("NOVA_RAG_BACKEND", "sqlite").lower() == "chroma":
+            try:
+                _chroma_collection().delete(where={"source": path})
+            except Exception:
+                pass
         if cursor.rowcount:
             await params.result_callback(f"Removed {cursor.rowcount} indexed chunk(s) for {path}. The original file was not changed.")
         else:
@@ -185,7 +217,26 @@ async def ask_documents(params: FunctionCallParams):
                 query_vector = vectors[0] if vectors else None
             except Exception:
                 query_vector = None
-        if query_vector:
+        if query_vector and os.getenv("NOVA_RAG_BACKEND", "sqlite").lower() == "chroma":
+            try:
+                result = _chroma_collection().query(
+                    query_embeddings=[query_vector],
+                    n_results=4,
+                    include=["documents", "metadatas", "distances"],
+                )
+                docs = result.get("documents", [[]])[0]
+                metas = result.get("metadatas", [[]])[0]
+                distances = result.get("distances", [[]])[0]
+                scored = []
+                for document, metadata, distance in zip(docs, metas, distances):
+                    row = (metadata.get("source", "unknown"), int(metadata.get("chunk_index", 0)), document, None)
+                    scored.append((1.0 - float(distance), row))
+                retrieval_mode = "ChromaDB semantic vector search"
+            except Exception:
+                scored = []
+        else:
+            scored = []
+        if query_vector and not scored:
             scored = []
             for row in rows:
                 try:
