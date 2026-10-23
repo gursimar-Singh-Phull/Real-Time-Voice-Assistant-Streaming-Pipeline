@@ -1,7 +1,7 @@
-"""Local document retrieval using SQLite-backed TF-IDF-style sparse term scoring.
+"""Local document retrieval with SQLite lexical/vector search and optional ChromaDB.
 
-This provides a dependency-light local RAG baseline. It is lexical retrieval, not
-a neural embedding model; the LLM receives retrieved excerpts as tool output.
+Gemini embeddings are optional; without them, retrieval falls back to lexical scoring.
+The LLM receives retrieved excerpts as tool output.
 """
 import math
 import json
