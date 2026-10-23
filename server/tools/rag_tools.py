@@ -149,6 +149,24 @@ async def ingest_document(params: FunctionCallParams):
         await params.result_callback(f"Document ingestion failed: {exc}")
 
 
+async def remove_document(params: FunctionCallParams):
+    """Remove indexed chunks only; never delete the source file."""
+    raw_path = (params.arguments.get("path") or "").strip()
+    if not raw_path:
+        await params.result_callback("Provide the path of the indexed document to remove.")
+        return
+    path = str(Path(raw_path).expanduser().resolve())
+    try:
+        with _db() as conn:
+            cursor = conn.execute("DELETE FROM chunks WHERE source = ?", (path,))
+        if cursor.rowcount:
+            await params.result_callback(f"Removed {cursor.rowcount} indexed chunk(s) for {path}. The original file was not changed.")
+        else:
+            await params.result_callback(f"No indexed document found for {path}. The original file was not changed.")
+    except sqlite3.Error as exc:
+        await params.result_callback(f"Could not remove document from the index: {exc}")
+
+
 async def ask_documents(params: FunctionCallParams):
     question = (params.arguments.get("question") or "").strip()
     if not question:
@@ -211,5 +229,6 @@ async def ask_documents(params: FunctionCallParams):
 
 rag_tools = ToolsSchema(standard_tools=[
     FunctionSchema(name="ingest_document", description="Index a local text, Markdown, CSV, JSON, Python, log, PDF, or image file for later question answering.", properties={"path":{"type":"string","description":"Full path to document."}}, required=["path"], handler=observe_tool(ingest_document)),
+    FunctionSchema(name="remove_document", description="Remove a document from Nova's local search index without deleting or changing the source file.", properties={"path":{"type":"string","description":"Exact path used when the document was indexed."}}, required=["path"], handler=observe_tool(remove_document)),
     FunctionSchema(name="ask_documents", description="Retrieve relevant excerpts from previously indexed local documents to answer a question. Ground answers in the returned excerpts.", properties={"question":{"type":"string","description":"Question to search indexed documents for."}}, required=["question"], handler=observe_tool(ask_documents)),
 ])
