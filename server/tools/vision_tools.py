@@ -10,6 +10,7 @@ from pathlib import Path
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams
+from tools.observability import observe_tool
 
 SCREENSHOT_DIR = Path.home() / ".nova_ai" / "screenshots"
 
@@ -85,7 +86,7 @@ vision_tools = ToolsSchema(standard_tools=[
         description="Capture and describe the current Windows screen using Gemini Vision. Use when the user asks what is on screen or to locate a visible UI element. Requires GEMINI_API_KEY.",
         properties={"question": {"type": "string", "description": "Optional question about the visible screen."}},
         required=[],
-        handler=inspect_screen,
+        handler=observe_tool(inspect_screen),
     ),
     FunctionSchema(
         name="click_screen",
@@ -96,6 +97,6 @@ vision_tools = ToolsSchema(standard_tools=[
             "confirmation": {"type": "string", "description": "Must exactly equal CLICK x,y after explicit user confirmation."},
         },
         required=["x", "y", "confirmation"],
-        handler=click_screen,
+        handler=observe_tool(click_screen),
     ),
 ])
