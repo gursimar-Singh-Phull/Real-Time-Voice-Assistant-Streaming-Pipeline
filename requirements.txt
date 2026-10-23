@@ -1,9 +1,9 @@
 # Core real-time voice assistant
-pipecat-ai[groq,cartesia,silero,runner,webrtc,evals]>=1.0.0
+pipecat-ai[cartesia,silero,runner,webrtc]>=1.4.0
 python-dotenv>=1.0.0
 loguru>=0.7.0
-groq>=0.9.0
-cartesia>=1.0.0
+groq>=1.5.0
+cartesia>=3.3.0
 
 # Local document/data workflows
 pandas>=2.2.0
