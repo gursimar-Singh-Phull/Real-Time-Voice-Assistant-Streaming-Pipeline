@@ -42,7 +42,7 @@ class SourceIntegrityTests(unittest.TestCase):
             "server/tools/rag_tools.py": ("ingest_document", "ask_documents", "remove_document", "_cosine", "_ocr_image", "_chroma_collection"),
             "server/tools/analyst_tools.py": ("analyze_dataset", "clean_missing", "clean_duplicates", "dashboard"),
             "server/tools/vision_tools.py": ("inspect_screen", "click_screen", "PENDING_CLICK"),
-            "server/tools/task_tools.py": ("create_task_plan", "get_task_plan", "update_task_step"),
+            "server/tools/task_tools.py": ("create_task_plan", "get_task_plan", "update_task_step", "cancel_task_plan"),
             "server/tools/observability.py": ("observe_tool", "get_runtime_metrics", "observability_tools"),
             "server/tools/browser_tools.py": ("youtube_search", "google_search", "open_website"),
         }
