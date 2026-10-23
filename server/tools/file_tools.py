@@ -12,6 +12,7 @@ from pathlib import Path
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams
+from tools.observability import observe_tool
 
 MAX_SEARCH_RESULTS = 50
 TEXT_EXTENSIONS = {".txt", ".md", ".csv", ".json", ".py", ".log", ".yaml", ".yml", ".html", ".xml"}
