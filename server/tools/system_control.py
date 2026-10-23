@@ -71,7 +71,7 @@ async def power_action(params: FunctionCallParams):
 
 
 def _schema(name, description, properties, required, handler):
-    return FunctionSchema(name=name, description=description, properties=properties, required=required, handler=handler)
+    return FunctionSchema(name=name, description=description, properties=properties, required=required, handler=observe_tool(handler))
 
 
 system_control_tools = ToolsSchema(standard_tools=[
