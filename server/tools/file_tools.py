@@ -46,6 +46,18 @@ async def open_folder(params: FunctionCallParams):
         await params.result_callback(f"Could not open folder: {exc}")
 
 
+async def open_file(params: FunctionCallParams):
+    try:
+        path = _path(params.arguments.get("path", ""))
+        if not path.exists() or not path.is_file():
+            await params.result_callback(f"File not found: {path}")
+            return
+        _open_path(path)
+        await params.result_callback(f"Opened file {path}.")
+    except Exception as exc:
+        await params.result_callback(f"Could not open file: {exc}")
+
+
 async def list_files(params: FunctionCallParams):
     try:
         folder = _path(params.arguments.get("path", ""))
@@ -150,6 +162,7 @@ def _schema(name, description, properties, required, handler):
 
 file_tools = ToolsSchema(standard_tools=[
     _schema("open_folder", "Open an existing local folder in the system file manager.", {"path":{"type":"string","description":"Absolute or home-relative folder path."}}, ["path"], open_folder),
+    _schema("open_file", "Open an existing local file with its default application.", {"path":{"type":"string","description":"Existing file path."}}, ["path"], open_file),
     _schema("list_files", "List files and subfolders in a local folder.", {"path":{"type":"string","description":"Folder path."},"limit":{"type":"integer","description":"Maximum number of entries, 1-100."}}, ["path"], list_files),
     _schema("search_files", "Search recursively for local files by filename, not file contents.", {"folder":{"type":"string","description":"Folder to search."},"query":{"type":"string","description":"Filename text to find."}}, ["folder","query"], search_files),
     _schema("create_text_file", "Create a UTF-8 text file without overwriting an existing file.", {"path":{"type":"string","description":"New file path."},"content":{"type":"string","description":"Full text to write."}}, ["path","content"], create_text_file),
