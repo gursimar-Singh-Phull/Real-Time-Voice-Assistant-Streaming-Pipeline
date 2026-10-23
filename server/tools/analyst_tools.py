@@ -70,22 +70,26 @@ async def analyze_dataset(params: FunctionCallParams):
                 if target not in df.columns:
                     raise ValueError(f"Column '{target}' not found.")
                 series = df[target]
-                if operation_name.lower() in {"average", "mean"}:
-                    result = series.mean(numeric_only=True) if hasattr(series, "mean") else None
-                elif operation_name.lower() == "sum":
-                    result = series.sum(numeric_only=True) if hasattr(series, "sum") else None
-                elif operation_name.lower() == "min":
-                    result = series.min()
-                elif operation_name.lower() == "max":
-                    result = series.max()
-                else:
+                if operation_name.lower() == "count":
                     result = series.count()
+                else:
+                    numeric_series = __import__("pandas").to_numeric(series, errors="coerce").dropna()
+                    if numeric_series.empty:
+                        raise ValueError(f"Column '{target}' has no numeric values for {operation_name}.")
+                    if operation_name.lower() in {"average", "mean"}:
+                        result = numeric_series.mean()
+                    elif operation_name.lower() == "sum":
+                        result = numeric_series.sum()
+                    elif operation_name.lower() == "min":
+                        result = numeric_series.min()
+                    else:
+                        result = numeric_series.max()
                 out = f"{operation_name.title()} of {target}: {result}"
             elif lowered.startswith("filter "):
                 import re
                 match = re.match(r"^filter\s+(.+?)\s*(==|=|>=|<=|>|<)\s*(.+)$", query, flags=re.IGNORECASE)
                 if not match:
-                    raise ValueError("Use: filter <column> <==, =, >, >=, <, or <=> <value>.")
+                    raise ValueError("Use: filter <column> = <value> or filter <numeric column> >, >=, <, or <= <number>.")
                 target, operator, raw_value = (part.strip() for part in match.groups())
                 if target not in df.columns:
                     raise ValueError(f"Column '{target}' not found.")
