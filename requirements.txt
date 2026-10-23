@@ -14,3 +14,4 @@ Pillow>=10.0.0
 # Optional Gemini-backed screen understanding
 google-genai>=1.0.0
 PyMuPDF>=1.24.0
+pytesseract>=0.3.10
