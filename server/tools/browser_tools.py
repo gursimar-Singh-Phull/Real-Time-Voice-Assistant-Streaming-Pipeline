@@ -95,6 +95,27 @@ async def google_search(params: FunctionCallParams):
 
 
 # -------------------------------------------------
+# Tool: YouTube Search
+# -------------------------------------------------
+async def youtube_search(params: FunctionCallParams):
+    """Open YouTube search results for a spoken query."""
+    query = (params.arguments.get("query") or "").strip()
+    browser_name = (params.arguments.get("browser") or "").strip()
+
+    if not query:
+        await params.result_callback("No YouTube search query provided.")
+        return
+
+    url = "https://www.youtube.com/results?search_query=" + urllib.parse.quote_plus(query)
+    try:
+        where = _launch_url(url, browser_name)
+        suffix = f" {where}" if where else ""
+        await params.result_callback(f"Searched YouTube for '{query}'{suffix}.")
+    except Exception as e:
+        await params.result_callback(f"Failed to search YouTube: {e}")
+
+
+# -------------------------------------------------
 # Tool: Open Website
 # -------------------------------------------------
 async def open_website(params: FunctionCallParams):
@@ -182,9 +203,34 @@ open_website_schema = FunctionSchema(
     handler=open_website,
 )
 
+
+youtube_search_schema = FunctionSchema(
+    name="youtube_search",
+    description=(
+        "Search YouTube for videos and open the results page. Use for requests "
+        "such as 'search YouTube for Python tutorials', 'find a video about "
+        "binary trees on YouTube', or 'play/search for X on YouTube'. Prefer "
+        "this over google_search when the user explicitly requests YouTube."
+    ),
+    properties={
+        "query": {
+            "type": "string",
+            "description": "The video topic or exact search phrase, without command words.",
+        },
+        "browser": {
+            "type": "string",
+            "description": "Optional browser name only when the user names one.",
+        },
+    },
+    required=["query"],
+    handler=youtube_search,
+)
+
+
 browser_tools = ToolsSchema(
     standard_tools=[
         google_search_schema,
+        youtube_search_schema,
         open_website_schema,
     ]
 )
