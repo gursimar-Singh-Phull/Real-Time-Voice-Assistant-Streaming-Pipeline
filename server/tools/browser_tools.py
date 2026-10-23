@@ -21,6 +21,7 @@ import webbrowser
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams
+from tools.observability import observe_tool
 from tools.windows_apps import find_windows_app
 
 # -------------------------------------------------
@@ -172,7 +173,7 @@ google_search_schema = FunctionSchema(
         },
     },
     required=["query"],
-    handler=google_search,
+    handler=observe_tool(google_search),
 )
 
 open_website_schema = FunctionSchema(
@@ -200,7 +201,7 @@ open_website_schema = FunctionSchema(
         },
     },
     required=["url"],
-    handler=open_website,
+    handler=observe_tool(open_website),
 )
 
 
@@ -223,7 +224,7 @@ youtube_search_schema = FunctionSchema(
         },
     },
     required=["query"],
-    handler=youtube_search,
+    handler=observe_tool(youtube_search),
 )
 
 
