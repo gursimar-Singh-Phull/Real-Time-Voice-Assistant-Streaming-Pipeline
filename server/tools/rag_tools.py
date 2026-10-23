@@ -4,6 +4,7 @@ This provides a dependency-light local RAG baseline. It is lexical retrieval, no
 a neural embedding model; the LLM receives retrieved excerpts as tool output.
 """
 import math
+import json
 import os
 import re
 import sqlite3
@@ -24,7 +25,10 @@ def _db():
     conn = sqlite3.connect(DB_PATH, timeout=5)
     conn.execute("""CREATE TABLE IF NOT EXISTS chunks(
         id INTEGER PRIMARY KEY, source TEXT NOT NULL, chunk_index INTEGER NOT NULL,
-        text TEXT NOT NULL, UNIQUE(source, chunk_index))""")
+        text TEXT NOT NULL, embedding TEXT, UNIQUE(source, chunk_index))""")
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(chunks)")}
+    if "embedding" not in columns:
+        conn.execute("ALTER TABLE chunks ADD COLUMN embedding TEXT")
     conn.commit()
     return conn
 
@@ -46,6 +50,30 @@ def _read_text(path):
         with fitz.open(path) as pdf:
             return "\n".join(page.get_text() for page in pdf)
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+def _embed(texts):
+    """Return Gemini embeddings when configured; None means lexical fallback."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return None
+    from google import genai
+    client = genai.Client(api_key=api_key)
+    response = client.models.embed_content(
+        model=os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001"),
+        contents=texts,
+    )
+    vectors = [list(item.values) for item in (getattr(response, "embeddings", None) or [])]
+    return vectors if len(vectors) == len(texts) else None
+
+
+def _cosine(left, right):
+    if not left or not right or len(left) != len(right):
+        return 0.0
+    dot = sum(a * b for a, b in zip(left, right))
+    left_norm = math.sqrt(sum(a * a for a in left))
+    right_norm = math.sqrt(sum(b * b for b in right))
+    return dot / (left_norm * right_norm) if left_norm and right_norm else 0.0
 
 
 def _chunks(text, size=900, overlap=120):
@@ -71,11 +99,19 @@ async def ingest_document(params: FunctionCallParams):
         if not chunks:
             await params.result_callback("The document contains no readable text.")
             return
+        try:
+            embeddings = _embed(chunks)
+        except Exception:
+            embeddings = None
         with _db() as conn:
             conn.execute("DELETE FROM chunks WHERE source = ?", (str(path),))
-            conn.executemany("INSERT INTO chunks(source, chunk_index, text) VALUES (?, ?, ?)",
-                             [(str(path), i, chunk) for i, chunk in enumerate(chunks)])
-        await params.result_callback(f"Indexed {len(chunks)} text chunks from {path.name}. Ask me a question about it.")
+            conn.executemany(
+                "INSERT INTO chunks(source, chunk_index, text, embedding) VALUES (?, ?, ?, ?)",
+                [(str(path), i, chunk, json.dumps(embeddings[i]) if embeddings else None)
+                 for i, chunk in enumerate(chunks)],
+            )
+        mode = "Gemini vector embeddings" if embeddings else "local lexical retrieval"
+        await params.result_callback(f"Indexed {len(chunks)} text chunks from {path.name} using {mode}. Ask me a question about it.")
     except Exception as exc:
         await params.result_callback(f"Document ingestion failed: {exc}")
 
@@ -85,29 +121,57 @@ async def ask_documents(params: FunctionCallParams):
     if not question:
         await params.result_callback("Provide a question about your indexed documents.")
         return
-    query_terms = set(_tokens(question))
     try:
         with _db() as conn:
-            rows = conn.execute("SELECT source, chunk_index, text FROM chunks").fetchall()
+            rows = conn.execute("SELECT source, chunk_index, text, embedding FROM chunks").fetchall()
         if not rows:
             await params.result_callback("No documents are indexed yet. Use ingest_document with a local .txt, .md, .csv, .json, .py, .log, or .pdf file first.")
             return
-        docs = [_tokens(row[2]) for row in rows]
-        df = {term: sum(term in set(doc) for doc in docs) for term in query_terms}
-        scored = []
-        for row, tokens in zip(rows, docs):
-            counts = {}
-            for token in tokens:
-                counts[token] = counts.get(token, 0) + 1
-            score = sum((1 + math.log(counts.get(term, 0))) * (math.log(1 + len(rows) / (1 + df.get(term, 0)))) for term in query_terms if counts.get(term, 0))
-            if score:
-                scored.append((score, row))
-        scored.sort(key=lambda item: item[0], reverse=True)
+        query_vector = None
+        if os.getenv("GEMINI_API_KEY") and any(row[3] for row in rows):
+            try:
+                vectors = _embed([question])
+                query_vector = vectors[0] if vectors else None
+            except Exception:
+                query_vector = None
+        if query_vector:
+            scored = []
+            for row in rows:
+                try:
+                    vector = json.loads(row[3]) if row[3] else None
+                except (TypeError, json.JSONDecodeError):
+                    vector = None
+                score = _cosine(query_vector, vector) if vector else 0.0
+                if score > 0:
+                    scored.append((score, row))
+            scored.sort(key=lambda item: item[0], reverse=True)
+            retrieval_mode = "semantic vector similarity"
+        else:
+            query_terms = set(_tokens(question))
+            docs = [_tokens(row[2]) for row in rows]
+            document_frequency = {term: sum(term in set(doc) for doc in docs) for term in query_terms}
+            scored = []
+            for row, tokens in zip(rows, docs):
+                counts = {}
+                for token in tokens:
+                    counts[token] = counts.get(token, 0) + 1
+                score = sum(
+                    (1 + math.log(counts.get(term, 0))) *
+                    math.log(1 + len(rows) / (1 + document_frequency.get(term, 0)))
+                    for term in query_terms if counts.get(term, 0)
+                )
+                if score:
+                    scored.append((score, row))
+            scored.sort(key=lambda item: item[0], reverse=True)
+            retrieval_mode = "lexical relevance"
         if not scored:
             await params.result_callback("No relevant excerpts found. Try different keywords or ingest more documents.")
             return
         excerpts = [f"Source: {row[0]} (chunk {row[1] + 1})\n{row[2]}" for _, row in scored[:4]]
-        await params.result_callback("Relevant document excerpts (answer using these sources and state if they do not contain the answer):\n\n" + "\n\n---\n\n".join(excerpts)[:8500])
+        await params.result_callback(
+            f"Retrieved using {retrieval_mode}. Answer using these excerpts and say if they do not contain the answer:\n\n"
+            + "\n\n---\n\n".join(excerpts)[:8500]
+        )
     except sqlite3.Error as exc:
         await params.result_callback(f"Document retrieval failed: {exc}")
 
