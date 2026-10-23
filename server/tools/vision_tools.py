@@ -21,7 +21,7 @@ def _capture():
         raise OSError("Screen capture is currently supported on Windows only.")
     from PIL import ImageGrab
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
-    image = ImageGrab.grab(all_screens=True)
+    image = ImageGrab.grab()
     path = SCREENSHOT_DIR / "latest_screen.png"
     image.save(path, format="PNG")
     return image, path
@@ -75,7 +75,7 @@ async def click_screen(params: FunctionCallParams):
             return
         PENDING_CLICK.discard(target)
         from PIL import ImageGrab
-        image = ImageGrab.grab(all_screens=True)
+        image = ImageGrab.grab()
         if x >= image.width or y >= image.height:
             raise ValueError(f"Coordinates are outside the current screen ({image.width}x{image.height}).")
         import ctypes
