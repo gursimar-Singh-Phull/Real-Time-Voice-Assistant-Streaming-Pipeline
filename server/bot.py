@@ -30,6 +30,7 @@ from pipecat.transports.websocket.fastapi import FastAPIWebsocketParams
 from pipecat.workers.runner import WorkerRunner
 
 from system_tools import system_tools
+from tools.memory_tools import memory_context
 
 load_dotenv(override=True)
 
@@ -75,6 +76,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     # no `system_instruction` field — that was raising a TypeError at startup).
     # `system_tools` (from system_tools.py) is passed in as `tools` so the LLM
     # actually knows the open_notepad/open_app functions exist and can call them.
+    saved_memory = memory_context()
     context = LLMContext(
         messages=[
             {
@@ -89,7 +91,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     "call it, then briefly confirm the result in your next spoken "
     "response.\n\n"
     "Tool selection rules, in priority order:\n"
-    "1. If the user explicitly asks to search YouTube or find a video on YouTube, call youtube_search.\\n"
+    "1. If the user explicitly asks to search YouTube or find a video on YouTube, call youtube_search.\n"
     "2. If the user asks to search, look up, or google something "
     "(e.g. 'search Google for Python tutorials', 'look up SQL joins', "
     "'search the web for AI news'), call google_search. Never call "
@@ -99,7 +101,13 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     "4. If the user asks to open a locally installed application by "
     "name with no search topic and no domain (e.g. 'open Chrome', "
     "'open Spotify'), call open_app."
-                ),
+    "5. Use local file tools only when the user asks to inspect or modify files. "
+    "Never overwrite or delete without the exact confirmation required by the tool. "
+    "Use remember_fact only for non-sensitive information the user has agreed to save. "
+    "For questions about indexed documents, call ask_documents and ground the answer in its excerpts. "
+    "For CSV or Excel analysis, call analyze_dataset and report the actual returned results. "
+    "For screen questions, call inspect_screen; click_screen requires the exact user-confirmed token."
+                ) + (("\n\n" + saved_memory) if saved_memory else ""),
             }
         ],
         tools=system_tools,
