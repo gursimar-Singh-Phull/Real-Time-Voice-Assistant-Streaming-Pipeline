@@ -67,6 +67,22 @@ async def analyze_dataset(params: FunctionCallParams):
                 out = f"Mean of {target}: {df[target].mean()}"
             else:
                 raise ValueError("Supported natural-language queries: 'count rows', 'list columns', 'average <column>'.")
+        elif operation in {"clean_missing", "clean_duplicates"}:
+            # Never mutate the source dataset: write a separate cleaned copy.
+            if operation == "clean_missing":
+                cleaned = df.dropna()
+                action = "removed rows containing missing values"
+            else:
+                cleaned = df.drop_duplicates()
+                action = "removed duplicate rows"
+            output = path.with_name(f"{path.stem}_cleaned{path.suffix}")
+            if output.exists():
+                raise FileExistsError(f"Refusing to overwrite existing output: {output}")
+            if output.suffix.lower() == ".csv":
+                cleaned.to_csv(output, index=False)
+            else:
+                cleaned.to_excel(output, index=False)
+            out = f"Cleaning complete: {action}. Rows: {len(df):,} -> {len(cleaned):,}. Original unchanged. Cleaned dataset saved to {output}"
         elif operation == "chart":
             import matplotlib
             matplotlib.use("Agg")
@@ -97,7 +113,7 @@ async def analyze_dataset(params: FunctionCallParams):
             )
             out = f"Analysis report saved to {report}"
         else:
-            raise ValueError("Operations: summary, describe, missing, duplicates, top, correlation, query, chart, report.")
+            raise ValueError("Operations: summary, describe, missing, duplicates, top, correlation, query, clean_missing, clean_duplicates, chart, report.")
         await params.result_callback(out[:9000])
     except ImportError as exc:
         await params.result_callback(f"Analysis dependency missing: {exc}. Install pandas, openpyxl, and matplotlib.")
@@ -108,10 +124,10 @@ async def analyze_dataset(params: FunctionCallParams):
 analyst_tools = ToolsSchema(standard_tools=[
     FunctionSchema(
         name="analyze_dataset",
-        description="Analyze a local CSV or Excel dataset. Supports summary, describe, missing values, duplicates, top values, numeric correlation, simple natural-language queries, chart generation, and report generation.",
+        description="Analyze a local CSV or Excel dataset. Supports summary, describe, missing values, duplicates, top values, numeric correlation, simple natural-language queries, safe cleaning to a new file, chart generation, and report generation.",
         properties={
             "path":{"type":"string","description":"Full path to CSV/XLSX/XLS file."},
-            "operation":{"type":"string","enum":["summary","describe","missing","duplicates","top","correlation","query","chart","report"],"description":"Analysis operation."},
+            "operation":{"type":"string","enum":["summary","describe","missing","duplicates","top","correlation","query","clean_missing","clean_duplicates","chart","report"],"description":"Analysis operation."},
             "column":{"type":"string","description":"Column name for top or chart."},
             "query":{"type":"string","description":"For query operation: count rows, list columns, or average <column>."}
         },
