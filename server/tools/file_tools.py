@@ -124,6 +124,9 @@ async def copy_or_move(params: FunctionCallParams):
         if destination.exists():
             await params.result_callback("Destination already exists; refusing to overwrite it.")
             return
+        if source.is_dir() and destination.is_relative_to(source):
+            await params.result_callback("Cannot copy or move a folder into itself or one of its descendants.")
+            return
         destination.parent.mkdir(parents=True, exist_ok=True)
         if operation == "copy":
             shutil.copy2(source, destination) if source.is_file() else shutil.copytree(source, destination)
@@ -143,8 +146,16 @@ async def delete_path(params: FunctionCallParams):
             PENDING_DELETE.discard(str(path))
             await params.result_callback(f"Path not found: {path}")
             return
-        if path == Path(path.anchor) or path == Path.home().resolve() or path == Path.cwd().resolve():
-            await params.result_callback("Refusing to delete a filesystem root, home directory, or current working directory.")
+        home = Path.home().resolve()
+        cwd = Path.cwd().resolve()
+        if (
+            path == Path(path.anchor)
+            or home == path
+            or home.is_relative_to(path)
+            or cwd == path
+            or cwd.is_relative_to(path)
+        ):
+            await params.result_callback("Refusing to delete a filesystem root, home directory, current working directory, or an ancestor of either.")
             return
         # A token is accepted only if this process previously requested confirmation
         # for the same canonical path on an earlier tool call.
