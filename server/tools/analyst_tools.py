@@ -5,6 +5,7 @@ from pathlib import Path
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams
+from tools.observability import observe_tool
 
 MAX_ROWS = 200_000
 
@@ -115,6 +116,6 @@ analyst_tools = ToolsSchema(standard_tools=[
             "query":{"type":"string","description":"For query operation: count rows, list columns, or average <column>."}
         },
         required=["path","operation"],
-        handler=analyze_dataset,
+        handler=observe_tool(analyze_dataset),
     )
 ])
