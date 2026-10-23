@@ -89,7 +89,8 @@ Status reflects code paths implemented in this branch. Provider-backed features,
 - [x] Uncaught tool error logging
 - [x] Source integrity and confirmation-safety tests
 - [x] GitHub Actions CI for syntax and source-level tests
-- [x] Voice-accessible tool metrics summary (counts, failures, average, p95 duration)\n- [ ] End-to-end metrics dashboard
+- [x] Voice-accessible tool metrics summary (counts, failures, average, p95 duration)
+- [ ] End-to-end metrics dashboard
 - [ ] Provider failure/timeout simulation tests
 
 ## Phase 10: Production readiness
