@@ -13,6 +13,7 @@ from pipecat.services.llm_service import FunctionCallParams
 from tools.observability import observe_tool
 
 SCREENSHOT_DIR = Path.home() / ".nova_ai" / "screenshots"
+PENDING_CLICK = set()
 
 
 def _capture():
@@ -62,11 +63,17 @@ async def click_screen(params: FunctionCallParams):
         expected = f"CLICK {x},{y}"
         if x < 0 or y < 0:
             raise ValueError("Coordinates must be non-negative.")
-        if confirmation != expected:
+        target = (x, y)
+        if target not in PENDING_CLICK:
+            PENDING_CLICK.add(target)
             await params.result_callback(
-                f"No click performed. Ask the user to explicitly confirm the exact action by saying: {expected}."
+                f"No click performed yet. Ask the user to confirm in a separate turn by saying exactly: {expected}."
             )
             return
+        if confirmation != expected:
+            await params.result_callback(f"Click still pending. The exact confirmation is: {expected}.")
+            return
+        PENDING_CLICK.discard(target)
         from PIL import ImageGrab
         image = ImageGrab.grab(all_screens=True)
         if x >= image.width or y >= image.height:
