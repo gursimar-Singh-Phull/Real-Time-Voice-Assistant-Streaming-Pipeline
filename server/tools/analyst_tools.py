@@ -154,7 +154,7 @@ async def analyze_dataset(params: FunctionCallParams):
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
             numeric = list(df.select_dtypes(include="number").columns[:2])
-            categorical = [col for col in df.columns if col not in numeric][:2]
+            categorical = list(df.select_dtypes(exclude="number").columns[:2])
             out_dir = Path.home() / ".nova_ai" / "reports"
             out_dir.mkdir(parents=True, exist_ok=True)
             output = out_dir / f"{path.stem}_dashboard.png"
@@ -199,7 +199,7 @@ analyst_tools = ToolsSchema(standard_tools=[
             "path":{"type":"string","description":"Full path to CSV/XLSX/XLS file."},
             "operation":{"type":"string","enum":["summary","describe","missing","duplicates","top","correlation","query","clean_missing","clean_duplicates","chart","dashboard","report"],"description":"Analysis operation."},
             "column":{"type":"string","description":"Column name for top or chart."},
-            "query":{"type":"string","description":"For query operation: count rows, list columns, or average <column>."}
+            "query":{"type":"string","description":"Query examples: count rows, list columns, average Revenue, sum Revenue, group by Region, filter Age > 30, or filter Status = Active."}
         },
         required=["path","operation"],
         handler=observe_tool(analyze_dataset),
