@@ -49,7 +49,7 @@ Status reflects code paths implemented in this branch. Provider-backed features,
 - [x] Local SQLite-backed embedding storage and cosine similarity
 - [x] Lexical retrieval fallback without a Gemini key
 - [x] Question answering grounded in retrieved excerpts
-- [ ] Dedicated vector database backend (e.g. ChromaDB; current vector index is SQLite-backed)
+- [x] Optional persistent ChromaDB vector backend, with SQLite fallback
 - [x] Optional OCR for scanned PDFs and images (requires Tesseract executable)
 - [x] Remove indexed document without deleting the source file
 
