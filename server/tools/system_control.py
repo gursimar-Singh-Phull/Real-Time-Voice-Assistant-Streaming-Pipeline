@@ -7,6 +7,7 @@ import sys
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams
+from tools.observability import observe_tool
 
 
 def _windows_only():
