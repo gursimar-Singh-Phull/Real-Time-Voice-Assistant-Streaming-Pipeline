@@ -18,7 +18,7 @@ Nova AI is a Python voice assistant built on Pipecat. It connects speech recogni
 | Vision | Capture and describe the Windows screen; estimate UI element coordinates; confirmed coordinate click | Requires optional Gemini Vision credentials; clicking is gated by a second explicit confirmation |
 | Data analyst mode | CSV/Excel summaries, missing values, duplicates, descriptive statistics, top values, correlation, simple natural-language queries, charts, reports, and cleaning | Cleaning writes a new output file and preserves the source |
 | Multi-step workflows | Persistent task plans and step tracking | The LLM coordinates tool calls; automatic retry/cancellation and resumable execution are not implemented yet |
-| Observability | Rotating logs and tool execution duration/error records | Pipeline metrics are enabled; real end-to-end latency still depends on hardware, transport, and provider response time |
+| Observability | Rotating structured logs, tool timing/error records, and voice-accessible runtime metrics | Pipeline metrics are enabled; real end-to-end latency still depends on hardware, transport, and provider response time |
 
 ## Architecture
 
@@ -92,6 +92,7 @@ Use the transport/client configuration supplied by your Pipecat setup. If your p
 - “Summarize C:\\data\\sales.csv.”
 - “Create a chart of the Revenue column in C:\\data\\sales.csv.”
 - “What is visible on my screen?”
+- “Show Nova's runtime metrics.”
 
 For deletion, memory removal, restart, shutdown, or screen clicks, follow the tool’s explicit confirmation request. Do not give Nova access to folders you do not want it to read or modify.
 
