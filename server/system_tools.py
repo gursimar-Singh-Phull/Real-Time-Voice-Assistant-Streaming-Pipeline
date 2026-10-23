@@ -115,5 +115,6 @@ system_tools = ToolsSchema(
         open_notepad_schema,
         open_app_schema,
         *system_control_tools.standard_tools,
+        *browser_tools.standard_tools,
     ]
 )
