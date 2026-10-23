@@ -29,6 +29,8 @@ class SourceIntegrityTests(unittest.TestCase):
         memory = (SERVER / "tools" / "memory_tools.py").read_text(encoding="utf-8")
         controls = (SERVER / "tools" / "system_control.py").read_text(encoding="utf-8")
         self.assertIn("PENDING_DELETE", files)
+        self.assertIn("home.is_relative_to(path)", files)
+        self.assertIn("destination.is_relative_to(source)", files)
         self.assertIn("confirmation != expected", files)
         self.assertIn("PENDING_FORGET", memory)
         self.assertIn('confirmation != f"FORGET {query}"', memory)
