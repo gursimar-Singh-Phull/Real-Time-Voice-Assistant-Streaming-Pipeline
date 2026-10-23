@@ -208,8 +208,9 @@ async def ask_documents(params: FunctionCallParams):
         with _db() as conn:
             rows = conn.execute("SELECT source, chunk_index, text, embedding FROM chunks").fetchall()
         if not rows:
-            await params.result_callback("No documents are indexed yet. Use ingest_document with a local .txt, .md, .csv, .json, .py, .log, or .pdf/image file first.")
+            await params.result_callback("No documents are indexed yet. Use ingest_document with a supported local text, PDF, or image file first.")
             return
+
         query_vector = None
         if os.getenv("GEMINI_API_KEY") and any(row[3] for row in rows):
             try:
@@ -217,6 +218,9 @@ async def ask_documents(params: FunctionCallParams):
                 query_vector = vectors[0] if vectors else None
             except Exception:
                 query_vector = None
+
+        scored = []
+        retrieval_mode = "lexical relevance"
         if query_vector and os.getenv("NOVA_RAG_BACKEND", "sqlite").lower() == "chroma":
             try:
                 result = _chroma_collection().query(
@@ -227,17 +231,15 @@ async def ask_documents(params: FunctionCallParams):
                 docs = result.get("documents", [[]])[0]
                 metas = result.get("metadatas", [[]])[0]
                 distances = result.get("distances", [[]])[0]
-                scored = []
                 for document, metadata, distance in zip(docs, metas, distances):
                     row = (metadata.get("source", "unknown"), int(metadata.get("chunk_index", 0)), document, None)
                     scored.append((1.0 - float(distance), row))
-                retrieval_mode = "ChromaDB semantic vector search"
+                if scored:
+                    retrieval_mode = "ChromaDB semantic vector search"
             except Exception:
                 scored = []
-        else:
-            scored = []
+
         if query_vector and not scored:
-            scored = []
             for row in rows:
                 try:
                     vector = json.loads(row[3]) if row[3] else None
@@ -247,12 +249,13 @@ async def ask_documents(params: FunctionCallParams):
                 if score > 0:
                     scored.append((score, row))
             scored.sort(key=lambda item: item[0], reverse=True)
-            retrieval_mode = "semantic vector similarity"
-        else:
+            if scored:
+                retrieval_mode = "SQLite semantic vector similarity"
+
+        if not scored:
             query_terms = set(_tokens(question))
             docs = [_tokens(row[2]) for row in rows]
             document_frequency = {term: sum(term in set(doc) for doc in docs) for term in query_terms}
-            scored = []
             for row, tokens in zip(rows, docs):
                 counts = {}
                 for token in tokens:
@@ -266,6 +269,7 @@ async def ask_documents(params: FunctionCallParams):
                     scored.append((score, row))
             scored.sort(key=lambda item: item[0], reverse=True)
             retrieval_mode = "lexical relevance"
+
         if not scored:
             await params.result_callback("No relevant excerpts found. Try different keywords or ingest more documents.")
             return
