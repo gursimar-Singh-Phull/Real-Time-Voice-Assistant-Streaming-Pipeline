@@ -9,6 +9,12 @@ from pipecat.services.llm_service import FunctionCallParams
 from tools.system_control import system_control_tools
 from tools.windows_apps import find_windows_app
 from tools.browser_tools import browser_tools
+from tools.observability import observe_tool
+from tools.vision_tools import vision_tools
+from tools.analyst_tools import analyst_tools
+from tools.rag_tools import rag_tools
+from tools.memory_tools import memory_tools
+from tools.file_tools import file_tools
 # -------------------------------------------------
 # Load application index
 # -------------------------------------------------
@@ -116,5 +122,10 @@ system_tools = ToolsSchema(
         open_app_schema,
         *system_control_tools.standard_tools,
         *browser_tools.standard_tools,
+        *file_tools.standard_tools,
+        *memory_tools.standard_tools,
+        *rag_tools.standard_tools,
+        *analyst_tools.standard_tools,
+        *vision_tools.standard_tools,
     ]
 )
