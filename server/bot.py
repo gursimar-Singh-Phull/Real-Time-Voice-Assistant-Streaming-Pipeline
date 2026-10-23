@@ -6,6 +6,7 @@
 
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -34,6 +35,17 @@ from tools.memory_tools import memory_context
 
 load_dotenv(override=True)
 
+# Rotating local log file; tool handlers add structured duration and error fields.
+_log_dir = Path.home() / ".nova_ai" / "logs"
+_log_dir.mkdir(parents=True, exist_ok=True)
+logger.add(
+    str(_log_dir / "nova.log"),
+    rotation="5 MB",
+    retention="7 days",
+    level=os.getenv("NOVA_LOG_LEVEL", "INFO"),
+    enqueue=True,
+)
+
 # We use lambdas to defer transport parameter creation until the transport
 # type is selected at runtime.
 transport_params = {
@@ -53,7 +65,11 @@ transport_params = {
 
 
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
-    logger.info(f"Starting bot")
+    required = ["GROQ_API_KEY", "CARTESIA_API_KEY", "CARTESIA_VOICE_ID"]
+    missing = [key for key in required if not os.getenv(key)]
+    if missing:
+        raise RuntimeError("Missing required environment variables: " + ", ".join(missing) + ". Copy .env.example to .env and fill them in.")
+    logger.info("Starting Nova voice pipeline")
 
     stt = GroqSTTService(api_key=os.environ["GROQ_API_KEY"])
 
