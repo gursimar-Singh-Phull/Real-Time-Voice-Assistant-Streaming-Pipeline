@@ -16,7 +16,7 @@ from pipecat.services.llm_service import FunctionCallParams
 from tools.observability import observe_tool
 
 DB_PATH = Path(os.getenv("NOVA_RAG_DB", Path.home() / ".nova_ai" / "documents.sqlite3"))
-ALLOWED = {".txt", ".md", ".csv", ".json", ".py", ".log", ".pdf"}
+ALLOWED = {".txt", ".md", ".csv", ".json", ".py", ".log", ".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff"}
 MAX_BYTES = 2_000_000
 
 
@@ -37,18 +37,51 @@ def _tokens(text):
     return re.findall(r"[a-zA-Z0-9_]{2,}", text.lower())
 
 
+def _ocr_image(image):
+    try:
+        import pytesseract
+    except ImportError as exc:
+        raise ImportError("OCR requires pytesseract and the Tesseract OCR executable. Install both to read scanned pages/images.") from exc
+    return pytesseract.image_to_string(image)
+
+
 def _read_text(path):
     if path.suffix.lower() not in ALLOWED:
         raise ValueError(f"Unsupported type {path.suffix}. Supported: {', '.join(sorted(ALLOWED))}")
     if path.stat().st_size > MAX_BYTES:
         raise ValueError("Document exceeds 2 MB safety limit.")
+    if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".tif", ".tiff"}:
+        from PIL import Image
+        with Image.open(path) as image:
+            text = _ocr_image(image)
+        if not text.strip():
+            raise ValueError("OCR did not find readable text in this image.")
+        return text
     if path.suffix.lower() == ".pdf":
         try:
             import fitz
         except ImportError as exc:
             raise ImportError("PDF ingestion requires PyMuPDF. Install with: pip install PyMuPDF") from exc
         with fitz.open(path) as pdf:
-            return "\n".join(page.get_text() for page in pdf)
+            pages = [page.get_text() for page in pdf]
+            text = "\n".join(pages).strip()
+            if text:
+                return text
+            # Scanned PDFs often have no embedded text; OCR rendered pages as a fallback.
+            try:
+                import pytesseract
+                from PIL import Image
+            except ImportError as exc:
+                raise ImportError("This PDF appears scanned. Install Pillow, pytesseract, and the Tesseract OCR executable for OCR.") from exc
+            extracted = []
+            for page in pdf:
+                pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
+                image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                extracted.append(_ocr_image(image))
+            text = "\n".join(extracted).strip()
+            if not text:
+                raise ValueError("OCR did not find readable text in the scanned PDF.")
+            return text
     return path.read_text(encoding="utf-8", errors="replace")
 
 
@@ -125,7 +158,7 @@ async def ask_documents(params: FunctionCallParams):
         with _db() as conn:
             rows = conn.execute("SELECT source, chunk_index, text, embedding FROM chunks").fetchall()
         if not rows:
-            await params.result_callback("No documents are indexed yet. Use ingest_document with a local .txt, .md, .csv, .json, .py, .log, or .pdf file first.")
+            await params.result_callback("No documents are indexed yet. Use ingest_document with a local .txt, .md, .csv, .json, .py, .log, or .pdf/image file first.")
             return
         query_vector = None
         if os.getenv("GEMINI_API_KEY") and any(row[3] for row in rows):
@@ -177,6 +210,6 @@ async def ask_documents(params: FunctionCallParams):
 
 
 rag_tools = ToolsSchema(standard_tools=[
-    FunctionSchema(name="ingest_document", description="Index a local text, Markdown, CSV, JSON, Python, log, or PDF file for later question answering.", properties={"path":{"type":"string","description":"Full path to document."}}, required=["path"], handler=observe_tool(ingest_document)),
+    FunctionSchema(name="ingest_document", description="Index a local text, Markdown, CSV, JSON, Python, log, PDF, or image file for later question answering.", properties={"path":{"type":"string","description":"Full path to document."}}, required=["path"], handler=observe_tool(ingest_document)),
     FunctionSchema(name="ask_documents", description="Retrieve relevant excerpts from previously indexed local documents to answer a question. Ground answers in the returned excerpts.", properties={"question":{"type":"string","description":"Question to search indexed documents for."}}, required=["question"], handler=observe_tool(ask_documents)),
 ])
