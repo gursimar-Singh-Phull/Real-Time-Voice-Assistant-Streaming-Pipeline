@@ -28,17 +28,20 @@ class SourceIntegrityTests(unittest.TestCase):
         files = (SERVER / "tools" / "file_tools.py").read_text(encoding="utf-8")
         memory = (SERVER / "tools" / "memory_tools.py").read_text(encoding="utf-8")
         controls = (SERVER / "tools" / "system_control.py").read_text(encoding="utf-8")
-        self.assertIn('confirmation != expected', files)
+        self.assertIn("PENDING_DELETE", files)
+        self.assertIn("confirmation != expected", files)
+        self.assertIn("PENDING_FORGET", memory)
         self.assertIn('confirmation != f"FORGET {query}"', memory)
-        self.assertIn('confirmation != expected', controls)
+        self.assertIn("PENDING_POWER", controls)
+        self.assertIn("confirmation != expected", controls)
 
     def test_roadmap_features_have_tool_implementations(self):
         expected = {
-            "server/tools/file_tools.py": ("open_folder", "search_files", "delete_path"),
+            "server/tools/file_tools.py": ("open_folder", "open_file", "search_files", "delete_path"),
             "server/tools/memory_tools.py": ("remember_fact", "recall_memory", "forget_memory"),
             "server/tools/rag_tools.py": ("ingest_document", "ask_documents", "_cosine"),
             "server/tools/analyst_tools.py": ("analyze_dataset", "clean_missing", "clean_duplicates"),
-            "server/tools/vision_tools.py": ("inspect_screen", "click_screen"),
+            "server/tools/vision_tools.py": ("inspect_screen", "click_screen", "PENDING_CLICK"),
             "server/tools/browser_tools.py": ("youtube_search", "google_search", "open_website"),
         }
         for relative, symbols in expected.items():
