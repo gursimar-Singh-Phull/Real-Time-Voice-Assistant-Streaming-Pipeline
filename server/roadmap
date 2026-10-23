@@ -13,7 +13,7 @@ Status reflects code paths implemented in this branch. Provider-backed features,
 - [x] Rename, move, and copy files/folders without overwriting destinations
 - [x] Delete files/folders only after exact confirmation
 - [x] Search and open local files
-- [x] PDF text extraction for document Q&A
+- [x] PDF text extraction and optional OCR for scanned PDFs/images
 
 ## Phase 2: System control
 - [x] Lock the computer
@@ -49,9 +49,9 @@ Status reflects code paths implemented in this branch. Provider-backed features,
 - [x] Local SQLite-backed embedding storage and cosine similarity
 - [x] Lexical retrieval fallback without a Gemini key
 - [x] Question answering grounded in retrieved excerpts
-- [ ] Dedicated vector database backend (e.g. ChromaDB)
-- [ ] OCR for scanned PDFs and images
-- [ ] Document deletion/re-index management command
+- [ ] Dedicated vector database backend (e.g. ChromaDB; current vector index is SQLite-backed)
+- [x] Optional OCR for scanned PDFs and images (requires Tesseract executable)
+- [x] Remove indexed document without deleting the source file
 
 ## Phase 6: Data analyst mode
 - [x] CSV and Excel file analysis
@@ -62,16 +62,16 @@ Status reflects code paths implemented in this branch. Provider-backed features,
 - [x] Simple natural-language data queries
 - [x] Automatic chart generation
 - [x] Text report generation
-- [ ] Rich multi-chart dashboard generation
-- [ ] Broader natural-language filters/group-by operations
+- [x] Multi-chart dashboard generation
+- [x] Natural-language filters, aggregates, and group-by counts
 
 ## Phase 7: Multi-step reasoning
 - [x] Tool routing instructions and sequential tool-use guidance
 - [x] Multiple tool families exposed to the LLM
 - [x] Tool results returned to the LLM for follow-up
 - [x] Basic error reporting and recovery guidance
-- [ ] Explicit planner/executor with persistent task state
-- [ ] Retry policy, cancellation, and resumable long-running workflows
+- [x] Persistent task plans and step status tracking
+- [ ] Automatic retries, cancellation, and resumable execution (plans can be inspected/resumed manually)
 - [ ] End-to-end benchmark suite for complex workflows
 
 ## Phase 8: Performance engineering
