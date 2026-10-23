@@ -13,6 +13,7 @@ from tools.file_tools import file_tools
 from tools.memory_tools import memory_tools
 from tools.rag_tools import rag_tools
 from tools.analyst_tools import analyst_tools
+from tools.vision_tools import vision_tools
 
 # -------------------------------------------------
 # Load application index
@@ -130,5 +131,6 @@ system_tools = ToolsSchema(
         *memory_tools.standard_tools,
         *rag_tools.standard_tools,
         *analyst_tools.standard_tools,
+        *vision_tools.standard_tools,
     ]
 )
