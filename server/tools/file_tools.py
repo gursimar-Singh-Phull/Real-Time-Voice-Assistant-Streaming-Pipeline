@@ -15,6 +15,7 @@ from pipecat.services.llm_service import FunctionCallParams
 from tools.observability import observe_tool
 
 MAX_SEARCH_RESULTS = 50
+PENDING_DELETE = set()
 TEXT_EXTENSIONS = {".txt", ".md", ".csv", ".json", ".py", ".log", ".yaml", ".yml", ".html", ".xml"}
 
 
@@ -139,14 +140,25 @@ async def delete_path(params: FunctionCallParams):
         confirmation = (params.arguments.get("confirmation") or "").strip()
         expected = f"DELETE {path.name}"
         if not path.exists():
+            PENDING_DELETE.discard(str(path))
             await params.result_callback(f"Path not found: {path}")
             return
-        if confirmation != expected:
+        if path == Path(path.anchor) or path == Path.home().resolve() or path == Path.cwd().resolve():
+            await params.result_callback("Refusing to delete a filesystem root, home directory, or current working directory.")
+            return
+        # A token is accepted only if this process previously requested confirmation
+        # for the same canonical path on an earlier tool call.
+        if str(path) not in PENDING_DELETE:
+            PENDING_DELETE.add(str(path))
             await params.result_callback(
                 f"Deletion not performed. Ask the user to explicitly confirm by saying: {expected}. "
-                "Only call again after that exact confirmation."
+                "Only call again after that separate confirmation."
             )
             return
+        if confirmation != expected:
+            await params.result_callback(f"Deletion still pending. The exact confirmation is: {expected}")
+            return
+        PENDING_DELETE.discard(str(path))
         if path.is_dir():
             shutil.rmtree(path)
         else:
