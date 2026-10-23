@@ -44,6 +44,7 @@ logger.add(
     retention="7 days",
     level=os.getenv("NOVA_LOG_LEVEL", "INFO"),
     enqueue=True,
+    serialize=True,
 )
 
 # We use lambdas to defer transport parameter creation until the transport
