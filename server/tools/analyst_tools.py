@@ -54,19 +54,61 @@ async def analyze_dataset(params: FunctionCallParams):
             out = numeric.corr(numeric_only=True).round(3).to_string()
         elif operation == "query":
             if not query:
-                raise ValueError("Provide a query such as 'show rows where Age > 30' is not yet supported; use a column summary, top values, missing, duplicates, or correlation.")
+                raise ValueError("Provide a query: count rows, list columns, average <column>, sum <column>, group by <column>, or filter <column> <operator> <value>.")
             lowered = query.lower()
             if lowered.startswith("count rows"):
                 out = f"Row count: {len(df):,}"
             elif lowered.startswith("list columns"):
                 out = "Columns: " + ", ".join(map(str, df.columns))
-            elif lowered.startswith("average ") or lowered.startswith("mean "):
-                target = query.split(" ", 1)[1].strip()
+            elif lowered.startswith("group by "):
+                target = query[9:].strip()
                 if target not in df.columns:
                     raise ValueError(f"Column '{target}' not found.")
-                out = f"Mean of {target}: {df[target].mean()}"
+                out = df[target].value_counts(dropna=False).head(30).to_string()
+            elif lowered.startswith(("average ", "mean ", "sum ", "min ", "max ", "count ")):
+                operation_name, target = query.split(" ", 1)
+                if target not in df.columns:
+                    raise ValueError(f"Column '{target}' not found.")
+                series = df[target]
+                if operation_name.lower() in {"average", "mean"}:
+                    result = series.mean(numeric_only=True) if hasattr(series, "mean") else None
+                elif operation_name.lower() == "sum":
+                    result = series.sum(numeric_only=True) if hasattr(series, "sum") else None
+                elif operation_name.lower() == "min":
+                    result = series.min()
+                elif operation_name.lower() == "max":
+                    result = series.max()
+                else:
+                    result = series.count()
+                out = f"{operation_name.title()} of {target}: {result}"
+            elif lowered.startswith("filter "):
+                import re
+                match = re.match(r"^filter\s+(.+?)\s*(==|=|>=|<=|>|<)\s*(.+)$", query, flags=re.IGNORECASE)
+                if not match:
+                    raise ValueError("Use: filter <column> <==, =, >, >=, <, or <=> <value>.")
+                target, operator, raw_value = (part.strip() for part in match.groups())
+                if target not in df.columns:
+                    raise ValueError(f"Column '{target}' not found.")
+                series = df[target]
+                value = raw_value.strip().strip("'\"")
+                if operator in {">", ">=", "<", "<="}:
+                    numeric_series = __import__("pandas").to_numeric(series, errors="coerce")
+                    try:
+                        numeric_value = float(value)
+                    except ValueError as exc:
+                        raise ValueError("Numeric comparison requires a numeric value.") from exc
+                    mask = {
+                        ">": numeric_series > numeric_value,
+                        ">=": numeric_series >= numeric_value,
+                        "<": numeric_series < numeric_value,
+                        "<=": numeric_series <= numeric_value,
+                    }[operator]
+                else:
+                    mask = series.astype(str).str.casefold() == value.casefold()
+                subset = df.loc[mask]
+                out = f"Matched {len(subset):,} row(s).\n" + subset.head(20).to_string(index=False)
             else:
-                raise ValueError("Supported natural-language queries: 'count rows', 'list columns', 'average <column>'.")
+                raise ValueError("Supported queries: count rows, list columns, average/sum/min/max/count <column>, group by <column>, filter <column> <operator> <value>.")
         elif operation in {"clean_missing", "clean_duplicates"}:
             # Never mutate the source dataset: write a separate cleaned copy.
             if operation == "clean_missing":
@@ -103,6 +145,30 @@ async def analyze_dataset(params: FunctionCallParams):
             plt.savefig(output)
             plt.close()
             out = f"Chart saved to {output}"
+        elif operation == "dashboard":
+            import matplotlib
+            matplotlib.use("Agg")
+            import matplotlib.pyplot as plt
+            numeric = list(df.select_dtypes(include="number").columns[:2])
+            categorical = [col for col in df.columns if col not in numeric][:2]
+            out_dir = Path.home() / ".nova_ai" / "reports"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            output = out_dir / f"{path.stem}_dashboard.png"
+            fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+            for axis, col in zip(axes.flat, numeric):
+                df[col].dropna().plot(kind="hist", bins=20, ax=axis)
+                axis.set_title(f"Distribution: {col}")
+            for axis, col in zip(list(axes.flat)[len(numeric):], categorical):
+                df[col].astype(str).value_counts().head(12).plot(kind="bar", ax=axis)
+                axis.set_title(f"Top values: {col}")
+            used = len(numeric) + len(categorical)
+            for axis in list(axes.flat)[used:]:
+                axis.set_visible(False)
+            fig.suptitle(f"Dataset dashboard: {path.name}")
+            fig.tight_layout()
+            fig.savefig(output)
+            plt.close(fig)
+            out = f"Dashboard saved to {output}"
         elif operation == "report":
             out_dir = Path.home() / ".nova_ai" / "reports"
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -113,7 +179,7 @@ async def analyze_dataset(params: FunctionCallParams):
             )
             out = f"Analysis report saved to {report}"
         else:
-            raise ValueError("Operations: summary, describe, missing, duplicates, top, correlation, query, clean_missing, clean_duplicates, chart, report.")
+            raise ValueError("Operations: summary, describe, missing, duplicates, top, correlation, query, clean_missing, clean_duplicates, chart, dashboard, report.")
         await params.result_callback(out[:9000])
     except ImportError as exc:
         await params.result_callback(f"Analysis dependency missing: {exc}. Install pandas, openpyxl, and matplotlib.")
@@ -124,10 +190,10 @@ async def analyze_dataset(params: FunctionCallParams):
 analyst_tools = ToolsSchema(standard_tools=[
     FunctionSchema(
         name="analyze_dataset",
-        description="Analyze a local CSV or Excel dataset. Supports summary, describe, missing values, duplicates, top values, numeric correlation, simple natural-language queries, safe cleaning to a new file, chart generation, and report generation.",
+        description="Analyze a local CSV or Excel dataset. Supports summary, describe, missing values, duplicates, top values, numeric correlation, natural-language filter/group-by queries, safe cleaning to a new file, chart/dashboard generation, and report generation.",
         properties={
             "path":{"type":"string","description":"Full path to CSV/XLSX/XLS file."},
-            "operation":{"type":"string","enum":["summary","describe","missing","duplicates","top","correlation","query","clean_missing","clean_duplicates","chart","report"],"description":"Analysis operation."},
+            "operation":{"type":"string","enum":["summary","describe","missing","duplicates","top","correlation","query","clean_missing","clean_duplicates","chart","dashboard","report"],"description":"Analysis operation."},
             "column":{"type":"string","description":"Column name for top or chart."},
             "query":{"type":"string","description":"For query operation: count rows, list columns, or average <column>."}
         },
