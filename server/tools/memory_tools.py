@@ -9,6 +9,7 @@ from pipecat.services.llm_service import FunctionCallParams
 from tools.observability import observe_tool
 
 DB_PATH = Path(os.getenv("NOVA_MEMORY_DB", Path.home() / ".nova_ai" / "memory.sqlite3"))
+PENDING_FORGET = set()
 
 
 def _connect():
@@ -75,12 +76,21 @@ async def forget_memory(params: FunctionCallParams):
     if not query:
         await params.result_callback("Provide a specific phrase to find saved memories.")
         return
-    if confirmation != f"FORGET {query}":
-        await params.result_callback(f"Nothing deleted. Ask the user to confirm by saying exactly: FORGET {query}")
+    if query not in PENDING_FORGET:
+        PENDING_FORGET.add(query)
+        await params.result_callback(f"Nothing deleted yet. Ask the user to confirm in a separate turn by saying exactly: FORGET {query}")
         return
+    if confirmation != f"FORGET {query}":
+        await params.result_callback(f"Deletion still pending. The exact confirmation is: FORGET {query}")
+        return
+    PENDING_FORGET.discard(query)
     try:
+        # instr() treats percent/underscore as literal characters, unlike LIKE.
         with _connect() as conn:
-            cursor = conn.execute("DELETE FROM memories WHERE fact LIKE ? OR category LIKE ?", (f"%{query}%", f"%{query}%"))
+            cursor = conn.execute(
+                "DELETE FROM memories WHERE instr(lower(fact), lower(?)) > 0 OR instr(lower(category), lower(?)) > 0",
+                (query, query),
+            )
         await params.result_callback(f"Deleted {cursor.rowcount} matching memory item(s).")
     except sqlite3.Error as exc:
         await params.result_callback(f"Could not delete memory: {exc}")
