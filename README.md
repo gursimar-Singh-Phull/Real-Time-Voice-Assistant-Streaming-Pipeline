@@ -14,9 +14,10 @@ Nova AI is a Python voice assistant built on Pipecat. It connects speech recogni
 | Safety | Confirmed deletion, memory removal, restart, and shutdown | Requires the exact confirmation phrase expected by each tool |
 | System | Lock, sleep, volume up/down, mute toggle | System controls are Windows-only |
 | Persistent memory | Save, recall, and forget user-approved facts/preferences | Stored locally in SQLite; do not save secrets or sensitive information |
-| Document Q&A | Ingest supported text files and PDFs; retrieve excerpts from indexed documents | Uses Gemini embeddings when configured and falls back to lexical retrieval; this is a local SQLite index, not a hosted vector database |
+| Document Q&A | Ingest text files, PDFs, and images; retrieve excerpts from indexed documents | Uses Gemini embeddings when configured and falls back to lexical retrieval; scanned-file OCR requires the Tesseract executable. This is a local SQLite index, not a hosted vector database |
 | Vision | Capture and describe the Windows screen; estimate UI element coordinates; confirmed coordinate click | Requires optional Gemini Vision credentials; clicking is gated by a second explicit confirmation |
 | Data analyst mode | CSV/Excel summaries, missing values, duplicates, descriptive statistics, top values, correlation, simple natural-language queries, charts, reports, and cleaning | Cleaning writes a new output file and preserves the source |
+| Multi-step workflows | Persistent task plans and step tracking | The LLM coordinates tool calls; automatic retry/cancellation and resumable execution are not implemented yet |
 | Observability | Rotating logs and tool execution duration/error records | Pipeline metrics are enabled; real end-to-end latency still depends on hardware, transport, and provider response time |
 
 ## Architecture
@@ -41,7 +42,7 @@ Audio response
 - Windows for desktop, system-control, and screen-interaction features
 - Groq API key for the LLM and speech recognition
 - Cartesia API key and voice ID for speech synthesis
-- Optional Gemini API key for screen understanding and semantic document embeddings
+- Optional Gemini API key for screen understanding and semantic document embeddings; Tesseract OCR executable for scanned PDFs/images
 
 ## Setup
 
@@ -85,7 +86,7 @@ Use the transport/client configuration supplied by your Pipecat setup. If your p
 - “Open my Downloads folder.”
 - “Find files containing ‘resume’ in their filename under Documents.”
 - “Remember that I prefer concise answers.” (Nova should ask before saving a preference.)
-- “Index this PDF at C:\\Users\\me\\Documents\\notes.pdf.”
+- “Index this PDF at C:\\Users\\me\\Documents\\notes.pdf, including OCR for scanned pages if Tesseract is installed.”
 - “Ask my indexed documents what they say about database normalization.”
 - “Summarize C:\\data\\sales.csv.”
 - “Create a chart of the Revenue column in C:\\data\\sales.csv.”
@@ -96,11 +97,12 @@ For deletion, memory removal, restart, shutdown, or screen clicks, follow the to
 ## Data and privacy
 
 - Memory and document indexes are stored locally under `~/.nova_ai/` by default.
-- Set `NOVA_MEMORY_DB` or `NOVA_RAG_DB` to change the database locations.
+- Set `NOVA_MEMORY_DB`, `NOVA_RAG_DB`, or `NOVA_TASK_DB` to change the database locations.
 - Logs are written to `~/.nova_ai/logs/nova.log`, with rotation and seven-day retention.
 - Do not put API keys in source files or commit your real `.env`.
 - Indexed documents and saved memories are supplied to the model only as context for relevant requests; avoid ingesting confidential documents unless you accept sending retrieved excerpts to your configured LLM provider.
 - Screen analysis sends the captured screenshot to Gemini when enabled. Use it only when comfortable with that data flow.
+- OCR requires installing the Tesseract application separately; the Python package alone is not enough.
 
 ## Testing
 
@@ -123,5 +125,7 @@ GitHub Actions runs these checks on pushes and pull requests. These tests valida
 - Latency varies by network, provider, model, and machine. No benchmark figures are claimed until measured in a real run.
 
 ## Roadmap
+
+For multi-step requests, Nova can save a task plan and update step states. It does not yet automatically retry or resume long-running tasks after a process restart.
 
 See [server/roadmap](server/roadmap) for the detailed implementation status. A checkbox means the code path exists; live provider integrations and desktop behavior still require local validation.
