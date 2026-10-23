@@ -39,7 +39,7 @@ class SourceIntegrityTests(unittest.TestCase):
         expected = {
             "server/tools/file_tools.py": ("open_folder", "open_file", "search_files", "delete_path"),
             "server/tools/memory_tools.py": ("remember_fact", "recall_memory", "forget_memory"),
-            "server/tools/rag_tools.py": ("ingest_document", "ask_documents", "remove_document", "_cosine", "_ocr_image"),
+            "server/tools/rag_tools.py": ("ingest_document", "ask_documents", "remove_document", "_cosine", "_ocr_image", "_chroma_collection"),
             "server/tools/analyst_tools.py": ("analyze_dataset", "clean_missing", "clean_duplicates", "dashboard"),
             "server/tools/vision_tools.py": ("inspect_screen", "click_screen", "PENDING_CLICK"),
             "server/tools/task_tools.py": ("create_task_plan", "get_task_plan", "update_task_step"),
@@ -50,6 +50,12 @@ class SourceIntegrityTests(unittest.TestCase):
             for symbol in symbols:
                 with self.subTest(file=relative, symbol=symbol):
                     self.assertIn(symbol, source)
+
+    def test_optional_vector_backend_is_documented(self):
+        optional = (ROOT / "requirements-optional.txt").read_text(encoding="utf-8")
+        rag = (SERVER / "tools" / "rag_tools.py").read_text(encoding="utf-8")
+        self.assertIn("chromadb", optional)
+        self.assertIn("NOVA_RAG_BACKEND", rag)
 
     def test_example_env_does_not_contain_real_secrets(self):
         env = (ROOT / ".env.example").read_text(encoding="utf-8")
