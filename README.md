@@ -14,7 +14,7 @@ Nova AI is a Python voice assistant built on Pipecat. It connects speech recogni
 | Safety | Confirmed deletion, memory removal, restart, and shutdown | Requires the exact confirmation phrase expected by each tool |
 | System | Lock, sleep, volume up/down, mute toggle | System controls are Windows-only |
 | Persistent memory | Save, recall, and forget user-approved facts/preferences | Stored locally in SQLite; do not save secrets or sensitive information |
-| Document Q&A | Ingest text files, PDFs, and images; retrieve excerpts from indexed documents | Uses Gemini embeddings when configured and falls back to lexical retrieval; scanned-file OCR requires the Tesseract executable. This is a local SQLite index, not a hosted vector database |
+| Document Q&A | Ingest text files, PDFs, and images; retrieve excerpts from indexed documents | Uses Gemini embeddings when configured and falls back to lexical retrieval; scanned-file OCR requires the Tesseract executable. Uses SQLite by default; an optional ChromaDB persistent vector backend is available |
 | Vision | Capture and describe the Windows screen; estimate UI element coordinates; confirmed coordinate click | Requires optional Gemini Vision credentials; clicking is gated by a second explicit confirmation |
 | Data analyst mode | CSV/Excel summaries, missing values, duplicates, descriptive statistics, top values, correlation, simple natural-language queries, charts, reports, and cleaning | Cleaning writes a new output file and preserves the source |
 | Multi-step workflows | Persistent task plans and step tracking | The LLM coordinates tool calls; automatic retry/cancellation and resumable execution are not implemented yet |
@@ -42,7 +42,7 @@ Audio response
 - Windows for desktop, system-control, and screen-interaction features
 - Groq API key for the LLM and speech recognition
 - Cartesia API key and voice ID for speech synthesis
-- Optional Gemini API key for screen understanding and semantic document embeddings; Tesseract OCR executable for scanned PDFs/images
+- Optional Gemini API key for screen understanding and semantic document embeddings; optional ChromaDB package for vector search; Tesseract OCR executable for scanned PDFs/images
 
 ## Setup
 
@@ -68,6 +68,7 @@ Audio response
    GEMINI_API_KEY=...
    GEMINI_VISION_MODEL=gemini-2.5-flash
    GEMINI_EMBEDDING_MODEL=gemini-embedding-001
+NOVA_RAG_BACKEND=sqlite  # or chroma
    ```
 
 5. Start the bot from the server directory:
@@ -103,6 +104,8 @@ For deletion, memory removal, restart, shutdown, or screen clicks, follow the to
 - Indexed documents and saved memories are supplied to the model only as context for relevant requests; avoid ingesting confidential documents unless you accept sending retrieved excerpts to your configured LLM provider.
 - Screen analysis sends the captured screenshot to Gemini when enabled. Use it only when comfortable with that data flow.
 - OCR requires installing the Tesseract application separately; the Python package alone is not enough.
+
+To enable the optional ChromaDB backend, install `pip install -r requirements-optional.txt` and set `NOVA_RAG_BACKEND=chroma` in `.env`. Without ChromaDB or Gemini credentials, Nova uses its local lexical/SQLite retrieval fallback.
 
 ## Testing
 
