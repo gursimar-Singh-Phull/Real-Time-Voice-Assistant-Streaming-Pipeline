@@ -10,6 +10,7 @@ from tools.system_control import system_control_tools
 from tools.windows_apps import find_windows_app
 from tools.browser_tools import browser_tools
 from tools.observability import observe_tool
+from tools.task_tools import task_tools
 from tools.vision_tools import vision_tools
 from tools.analyst_tools import analyst_tools
 from tools.rag_tools import rag_tools
@@ -127,5 +128,6 @@ system_tools = ToolsSchema(
         *rag_tools.standard_tools,
         *analyst_tools.standard_tools,
         *vision_tools.standard_tools,
+        *task_tools.standard_tools,
     ]
 )
