@@ -162,7 +162,7 @@ task_tools = ToolsSchema(standard_tools=[
         properties={
             "task_id": {"type": "integer", "description": "Task plan ID."},
             "step_index": {"type": "integer", "description": "One-based step index."},
-            "status": {"type": "string", "enum": ["pending", "in_progress", "completed", "blocked"], "description": "Current step status."},
+            "status": {"type": "string", "enum": ["pending", "in_progress", "completed", "blocked", "cancelled"], "description": "Current step status."},
             "notes": {"type": "string", "description": "Optional result or error details."},
         },
         required=["task_id", "step_index", "status"],
