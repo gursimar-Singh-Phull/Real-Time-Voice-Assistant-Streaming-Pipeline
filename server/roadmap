@@ -1,80 +1,109 @@
-The project is actively under development. Features are being added and improved incrementally.
+# Nova AI implementation roadmap
 
-### Phase 1: Desktop Control
+Status reflects code paths implemented in this branch. Provider-backed features, Windows-only actions, and audio behavior still require end-to-end validation on the target machine.
+
+## Phase 1: Desktop and browser control
 - [x] Open Windows applications using voice commands
 - [x] Open Notepad
 - [x] Open websites
 - [x] Google web search through voice commands
 - [x] YouTube search through voice commands
-- [ ] Open folders using voice commands
-- [ ] Create, rename, delete, move, and copy files
-- [ ] Search and open local files
-- [ ] PDF file handling and interaction
+- [x] Open folders using voice commands
+- [x] Create text files without overwriting existing files
+- [x] Rename, move, and copy files/folders without overwriting destinations
+- [x] Delete files/folders only after exact confirmation
+- [x] Search and open local files
+- [x] PDF text extraction for document Q&A
 
-### Phase 2: System Control
+## Phase 2: System control
 - [x] Lock the computer
 - [x] Put the computer to sleep
-- [ ] Increase system volume
-- [ ] Decrease system volume
-- [ ] Mute and unmute system audio
-- [ ] Restart the computer
-- [ ] Shut down the computer
-- [ ] Add confirmation for potentially disruptive actions
+- [x] Increase system volume
+- [x] Decrease system volume
+- [x] Mute/unmute system audio (toggle)
+- [x] Restart the computer after exact confirmation
+- [x] Shut down the computer after exact confirmation
+- [x] Confirmation gates for destructive or disruptive actions
 
-### Phase 3: Memory
-- [ ] Conversation memory
-- [ ] User preference memory
-- [ ] Context-aware responses
-- [ ] Persistent memory across sessions
+## Phase 3: Memory
+- [x] Persistent conversation facts/preferences stored in SQLite
+- [x] User-approved preference memory
+- [x] Saved memory added to context on startup/session creation
+- [x] Recall saved memory by keyword
+- [x] Forget saved memory only after exact confirmation
+- [ ] Automatic summarization of long conversation history
+- [ ] Memory encryption at rest
 
-### Phase 4: Vision
-- [ ] Screen understanding
-- [ ] Screenshot analysis
-- [ ] Visual UI element detection
-- [ ] Voice-controlled interaction with visual elements
+## Phase 4: Vision
+- [x] Screen capture
+- [x] Screenshot analysis through optional Gemini Vision
+- [x] Approximate visual UI element/coordinate descriptions
+- [x] Voice-controlled coordinate click behind explicit confirmation
+- [ ] Robust UI automation using accessibility/UI Automation APIs
+- [ ] Cross-platform vision support
 
-### Phase 5: RAG
-- [ ] Document ingestion
-- [ ] Document embeddings
-- [ ] Vector database integration
-- [ ] Question answering over personal documents
-- [ ] Context-aware document retrieval
+## Phase 5: RAG / document Q&A
+- [x] Document ingestion and chunking
+- [x] PDF, text, Markdown, CSV, JSON, Python, and log file ingestion
+- [x] Optional Gemini semantic embeddings
+- [x] Local SQLite-backed embedding storage and cosine similarity
+- [x] Lexical retrieval fallback without a Gemini key
+- [x] Question answering grounded in retrieved excerpts
+- [ ] Dedicated vector database backend (e.g. ChromaDB)
+- [ ] OCR for scanned PDFs and images
+- [ ] Document deletion/re-index management command
 
-### Phase 6: Data Analyst Mode
-- [ ] CSV and Excel file analysis
-- [ ] Data cleaning through voice commands
-- [ ] Statistical analysis
-- [ ] Automatic data visualization
-- [ ] Natural-language data queries
-- [ ] Report generation
+## Phase 6: Data analyst mode
+- [x] CSV and Excel file analysis
+- [x] Missing-value and duplicate detection
+- [x] Safe data cleaning to a separate output file
+- [x] Descriptive statistics and numeric correlation
+- [x] Top-value summaries
+- [x] Simple natural-language data queries
+- [x] Automatic chart generation
+- [x] Text report generation
+- [ ] Rich multi-chart dashboard generation
+- [ ] Broader natural-language filters/group-by operations
 
-### Phase 7: Multi-Step Reasoning
-- [ ] Multi-step task execution
-- [ ] Tool chaining
-- [ ] Task planning
-- [ ] Error recovery
-- [ ] Complex voice workflows
+## Phase 7: Multi-step reasoning
+- [x] Tool routing instructions and sequential tool-use guidance
+- [x] Multiple tool families exposed to the LLM
+- [x] Tool results returned to the LLM for follow-up
+- [x] Basic error reporting and recovery guidance
+- [ ] Explicit planner/executor with persistent task state
+- [ ] Retry policy, cancellation, and resumable long-running workflows
+- [ ] End-to-end benchmark suite for complex workflows
 
-### Phase 8: Performance Engineering
-- [ ] Reduce speech-to-text latency
-- [ ] Reduce LLM response latency
-- [ ] Optimize tool execution
-- [ ] Reduce text-to-speech latency
-- [ ] Improve overall conversational responsiveness
+## Phase 8: Performance engineering
+- [x] Pipecat pipeline metrics and usage metrics enabled
+- [x] Tool execution duration logged
+- [x] Avoid loading pandas/matplotlib until data tools are called
+- [ ] Measure STT/LLM/TTS latency on a real Windows device
+- [ ] Optimize provider/model settings using measured baselines
+- [ ] Formal latency budget and regression thresholds
 
-### Phase 9: Observability
-- [ ] Structured logging
-- [ ] Tool execution tracking
-- [ ] Latency monitoring
-- [ ] Error monitoring
-- [ ] Performance metrics
-- [ ] Debugging and evaluation workflows
+## Phase 9: Observability
+- [x] Rotating structured application logs
+- [x] Tool execution tracking
+- [x] Tool latency measurement
+- [x] Uncaught tool error logging
+- [x] Source integrity and confirmation-safety tests
+- [x] GitHub Actions CI for syntax and source-level tests
+- [ ] End-to-end metrics dashboard
+- [ ] Provider failure/timeout simulation tests
 
-### Phase 10: Production-Ready Assistant
-- [ ] Refine the overall architecture
-- [ ] Improve reliability and error handling
-- [ ] Improve security
-- [ ] Improve user experience
-- [ ] Add comprehensive documentation
-- [ ] Add automated testing
-- [ ] Prepare a polished release
+## Phase 10: Production readiness
+- [x] Modular tool architecture
+- [x] Environment-variable configuration and startup validation
+- [x] Confirmation gates for high-impact local actions
+- [x] Setup, security, privacy, and limitation documentation
+- [x] Automated source-level tests
+- [ ] Full Windows end-to-end voice test with real API credentials
+- [ ] Dependency/lockfile reconciliation for every deployment target
+- [ ] Security review and permission/sandbox model
+- [ ] Accessibility-based UI automation
+- [ ] Polished release and demo recording
+
+## Validation boundary
+
+A checked box means an implementation path exists; it does not imply the feature has passed live testing. CI currently checks syntax, tool registration, and safety guards without API credentials or access to a Windows desktop. Semantic document embeddings and screen analysis require `GEMINI_API_KEY`. All local file and desktop actions run with the operating-system permissions of the process.
