@@ -9,7 +9,7 @@ from pipecat.services.llm_service import FunctionCallParams
 from tools.observability import observe_tool
 
 DB_PATH = Path(os.getenv("NOVA_TASK_DB", Path.home() / ".nova_ai" / "tasks.sqlite3"))
-VALID_STATES = {"pending", "in_progress", "completed", "blocked"}
+VALID_STATES = {"pending", "in_progress", "completed", "blocked", "cancelled"}
 
 
 def _db():
@@ -77,6 +77,25 @@ async def get_task_plan(params: FunctionCallParams):
         await params.result_callback(f"Could not read task plan: {exc}")
 
 
+async def cancel_task_plan(params: FunctionCallParams):
+    """Cancel a stored plan and its pending/in-progress steps; does not interrupt an active OS/API call."""
+    try:
+        task_id = int(params.arguments.get("task_id", 0))
+        with _db() as conn:
+            task = conn.execute("SELECT title FROM tasks WHERE id = ?", (task_id,)).fetchone()
+            if not task:
+                await params.result_callback(f"Task plan #{task_id} was not found.")
+                return
+            conn.execute("UPDATE tasks SET status = 'cancelled' WHERE id = ?", (task_id,))
+            conn.execute(
+                "UPDATE task_steps SET status = 'cancelled' WHERE task_id = ? AND status IN ('pending', 'in_progress')",
+                (task_id,),
+            )
+        await params.result_callback(f"Cancelled task plan #{task_id}: {task[0]}. Any currently executing external action is not forcibly interrupted.")
+    except (ValueError, sqlite3.Error) as exc:
+        await params.result_callback(f"Could not cancel task plan: {exc}")
+
+
 async def update_task_step(params: FunctionCallParams):
     try:
         task_id = int(params.arguments.get("task_id", 0))
@@ -101,6 +120,8 @@ async def update_task_step(params: FunctionCallParams):
             states = [row[0] for row in conn.execute("SELECT status FROM task_steps WHERE task_id = ?", (task_id,))]
             if states and all(state == "completed" for state in states):
                 conn.execute("UPDATE tasks SET status = 'completed' WHERE id = ?", (task_id,))
+            elif "cancelled" in states:
+                conn.execute("UPDATE tasks SET status = 'cancelled' WHERE id = ?", (task_id,))
             elif "blocked" in states:
                 conn.execute("UPDATE tasks SET status = 'blocked' WHERE id = ?", (task_id,))
             else:
@@ -127,6 +148,13 @@ task_tools = ToolsSchema(standard_tools=[
         properties={"task_id": {"type": "integer", "description": "Plan ID returned by create_task_plan."}},
         required=["task_id"],
         handler=observe_tool(get_task_plan),
+    ),
+    FunctionSchema(
+        name="cancel_task_plan",
+        description="Cancel a saved task plan and mark pending steps cancelled. This does not forcibly interrupt an OS command or an API request already in progress.",
+        properties={"task_id": {"type": "integer", "description": "Task plan ID."}},
+        required=["task_id"],
+        handler=observe_tool(cancel_task_plan),
     ),
     FunctionSchema(
         name="update_task_step",
