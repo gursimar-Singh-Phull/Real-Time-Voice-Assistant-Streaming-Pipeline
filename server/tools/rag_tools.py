@@ -15,7 +15,7 @@ from pipecat.services.llm_service import FunctionCallParams
 from tools.observability import observe_tool
 
 DB_PATH = Path(os.getenv("NOVA_RAG_DB", Path.home() / ".nova_ai" / "documents.sqlite3"))
-ALLOWED = {".txt", ".md", ".csv", ".json", ".py", ".log"}
+ALLOWED = {".txt", ".md", ".csv", ".json", ".py", ".log", ".pdf"}
 MAX_BYTES = 2_000_000
 
 
@@ -38,6 +38,13 @@ def _read_text(path):
         raise ValueError(f"Unsupported type {path.suffix}. Supported: {', '.join(sorted(ALLOWED))}")
     if path.stat().st_size > MAX_BYTES:
         raise ValueError("Document exceeds 2 MB safety limit.")
+    if path.suffix.lower() == ".pdf":
+        try:
+            import fitz
+        except ImportError as exc:
+            raise ImportError("PDF ingestion requires PyMuPDF. Install with: pip install PyMuPDF") from exc
+        with fitz.open(path) as pdf:
+            return "\n".join(page.get_text() for page in pdf)
     return path.read_text(encoding="utf-8", errors="replace")
 
 
@@ -83,7 +90,7 @@ async def ask_documents(params: FunctionCallParams):
         with _db() as conn:
             rows = conn.execute("SELECT source, chunk_index, text FROM chunks").fetchall()
         if not rows:
-            await params.result_callback("No documents are indexed yet. Use ingest_document with a local .txt, .md, .csv, .json, .py, or .log file first.")
+            await params.result_callback("No documents are indexed yet. Use ingest_document with a local .txt, .md, .csv, .json, .py, .log, or .pdf file first.")
             return
         docs = [_tokens(row[2]) for row in rows]
         df = {term: sum(term in set(doc) for doc in docs) for term in query_terms}
@@ -106,6 +113,6 @@ async def ask_documents(params: FunctionCallParams):
 
 
 rag_tools = ToolsSchema(standard_tools=[
-    FunctionSchema(name="ingest_document", description="Index a local text, Markdown, CSV, JSON, Python, or log file for later question answering.", properties={"path":{"type":"string","description":"Full path to document."}}, required=["path"], handler=observe_tool(ingest_document)),
+    FunctionSchema(name="ingest_document", description="Index a local text, Markdown, CSV, JSON, Python, log, or PDF file for later question answering.", properties={"path":{"type":"string","description":"Full path to document."}}, required=["path"], handler=observe_tool(ingest_document)),
     FunctionSchema(name="ask_documents", description="Retrieve relevant excerpts from previously indexed local documents to answer a question. Ground answers in the returned excerpts.", properties={"question":{"type":"string","description":"Question to search indexed documents for."}}, required=["question"], handler=observe_tool(ask_documents)),
 ])
