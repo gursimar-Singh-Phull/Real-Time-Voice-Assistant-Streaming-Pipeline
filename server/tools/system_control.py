@@ -9,6 +9,8 @@ from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams
 from tools.observability import observe_tool
 
+PENDING_POWER = set()
+
 
 def _windows_only():
     if sys.platform != "win32":
@@ -56,11 +58,18 @@ async def power_action(params: FunctionCallParams):
     if action not in expected:
         await params.result_callback("Choose power action: restart or shutdown.")
         return
-    if confirmation != expected[action]:
+    if action not in PENDING_POWER:
+        PENDING_POWER.add(action)
         await params.result_callback(
-            f"No action taken. Ask the user to explicitly confirm by saying exactly: {expected[action]}."
+            f"No action taken yet. Ask the user to confirm in a separate turn by saying exactly: {expected[action]}."
         )
         return
+    if confirmation != expected[action]:
+        await params.result_callback(
+            f"No action taken. The exact confirmation phrase is: {expected[action]}."
+        )
+        return
+    PENDING_POWER.discard(action)
     try:
         _windows_only()
         command = ["shutdown.exe", "/r", "/t", "0"] if action == "restart" else ["shutdown.exe", "/s", "/t", "0"]
