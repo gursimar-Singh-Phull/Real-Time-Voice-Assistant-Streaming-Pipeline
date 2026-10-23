@@ -1,5 +1,6 @@
 """Structured timing/error instrumentation for asynchronous tool handlers."""
 import time
+import math
 from functools import wraps
 
 from loguru import logger
@@ -56,7 +57,7 @@ async def get_runtime_metrics(params):
     for name, data in sorted(stats.items()):
         values = sorted(data["durations"])
         average = sum(values) / len(values) if values else 0.0
-        p95 = values[min(len(values) - 1, max(0, int(len(values) * 0.95) - 1))] if values else 0.0
+        p95 = values[min(len(values) - 1, max(0, math.ceil(len(values) * 0.95) - 1))] if values else 0.0
         lines.append(
             f"{name}: completed={data['completed']}, failed={data['failed']}, "
             f"avg={average:.1f} ms, p95={p95:.1f} ms"
