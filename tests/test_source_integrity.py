@@ -19,7 +19,7 @@ class SourceIntegrityTests(unittest.TestCase):
         registry = (SERVER / "system_tools.py").read_text(encoding="utf-8")
         for name in (
             "browser_tools", "file_tools", "memory_tools", "rag_tools",
-            "analyst_tools", "vision_tools", "system_control_tools", "task_tools",
+            "analyst_tools", "vision_tools", "system_control_tools", "task_tools", "observability_tools",
         ):
             with self.subTest(name=name):
                 self.assertIn(f"*{name}.standard_tools", registry)
@@ -43,6 +43,7 @@ class SourceIntegrityTests(unittest.TestCase):
             "server/tools/analyst_tools.py": ("analyze_dataset", "clean_missing", "clean_duplicates", "dashboard"),
             "server/tools/vision_tools.py": ("inspect_screen", "click_screen", "PENDING_CLICK"),
             "server/tools/task_tools.py": ("create_task_plan", "get_task_plan", "update_task_step"),
+            "server/tools/observability.py": ("observe_tool", "get_runtime_metrics", "observability_tools"),
             "server/tools/browser_tools.py": ("youtube_search", "google_search", "open_website"),
         }
         for relative, symbols in expected.items():
