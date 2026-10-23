@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "roadmap/**", "fix/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  source-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python source
+        run: python -m compileall -q server
+      - name: Check undefined names
+        run: |
+          python -m pip install ruff
+          ruff check --select F821 server tests
+      - name: Run source integrity tests
+        run: python -m unittest discover -s tests -v

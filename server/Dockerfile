@@ -1,19 +1,15 @@
 FROM dailyco/pipecat-base:latest
 
-# Enable bytecode compilation
-ENV UV_COMPILE_BYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# Copy from the cache instead of linking since it's a mounted volume
-ENV UV_LINK_MODE=copy
+WORKDIR /app
 
-# Uncomment if you wish to print a summary of the features available in the base image
-# ENV PCC_LOG_FEATURES_SUMMARY=true
+# Install all runtime dependencies from the server-scoped manifest.
+COPY requirements.txt ./requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
-# Install the project's dependencies using the lockfile and settings
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --no-dev
+# Copy the full application, including tool modules and the application index.
+COPY . .
 
-# Copy the application code
-COPY ./bot.py bot.py
+CMD ["python", "bot.py"]
