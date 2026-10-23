@@ -91,7 +91,7 @@ open_notepad_schema = FunctionSchema(
     description="Open the Windows Notepad application.",
     properties={},
     required=[],
-    handler=open_notepad,
+    handler=observe_tool(open_notepad),
 )
 
 open_app_schema = FunctionSchema(
@@ -107,7 +107,7 @@ open_app_schema = FunctionSchema(
         }
     },
     required=["app_name"],
-    handler=open_app,
+    handler=observe_tool(open_app),
 ) 
 
 system_tools = ToolsSchema(
