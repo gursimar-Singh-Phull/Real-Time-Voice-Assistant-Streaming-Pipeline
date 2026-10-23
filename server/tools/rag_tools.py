@@ -12,6 +12,7 @@ from pathlib import Path
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams
+from tools.observability import observe_tool
 
 DB_PATH = Path(os.getenv("NOVA_RAG_DB", Path.home() / ".nova_ai" / "documents.sqlite3"))
 ALLOWED = {".txt", ".md", ".csv", ".json", ".py", ".log"}
@@ -105,6 +106,6 @@ async def ask_documents(params: FunctionCallParams):
 
 
 rag_tools = ToolsSchema(standard_tools=[
-    FunctionSchema(name="ingest_document", description="Index a local text, Markdown, CSV, JSON, Python, or log file for later question answering.", properties={"path":{"type":"string","description":"Full path to document."}}, required=["path"], handler=ingest_document),
-    FunctionSchema(name="ask_documents", description="Retrieve relevant excerpts from previously indexed local documents to answer a question. Ground answers in the returned excerpts.", properties={"question":{"type":"string","description":"Question to search indexed documents for."}}, required=["question"], handler=ask_documents),
+    FunctionSchema(name="ingest_document", description="Index a local text, Markdown, CSV, JSON, Python, or log file for later question answering.", properties={"path":{"type":"string","description":"Full path to document."}}, required=["path"], handler=observe_tool(ingest_document)),
+    FunctionSchema(name="ask_documents", description="Retrieve relevant excerpts from previously indexed local documents to answer a question. Ground answers in the returned excerpts.", properties={"question":{"type":"string","description":"Question to search indexed documents for."}}, required=["question"], handler=observe_tool(ask_documents)),
 ])
